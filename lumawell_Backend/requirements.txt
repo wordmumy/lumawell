@@ -1,0 +1,24 @@
+# --- Core ---
+langgraph>=0.2.30
+langchain-core>=0.3.6
+openai>=1.44.0
+python-dotenv>=1.0.1
+pydantic>=2.7.4
+
+# --- NLP & Retrieval ---
+sentence-transformers>=2.7.0
+torch>=2.2.0
+numpy>=1.26.4
+scikit-learn>=1.4.2
+
+# --- Optional (SQLite checkpoint) ---
+langgraph-checkpoint-sqlite>=0.0.3
+sqlalchemy>=2.0   # 若用 SqliteSaver.from_conn_string 或 sqlite 连接
+
+# --- Weather & Timezone (实时天气) ---
+requests>=2.31.0,<3
+pytz>=2024.1,<2025
+
+# --- Backend API ---
+fastapi>=0.112
+uvicorn[standard]>=0.30
