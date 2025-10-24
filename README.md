@@ -12,16 +12,16 @@
 ## 📚 Table of Contents / 目录
 - [Overview / 项目概述](#overview--项目概述)
 - [Architecture / 系统架构](#architecture--系统架构)
-- [Tech Stack / 技术栈](#tech-stack--技术栈)
 - [Installation / 安装与运行](#installation--安装与运行)
 - [API Reference / 接口文档](#api-reference--接口文档)
-- [Agent Graph / 智能体结构](#agent-graph--智能体结构)
-- [Environment Variables / 环境变量](#environment-variables--环境变量)
-- [Frontend / 前端交互逻辑](#frontend--前端交互逻辑)
-- [Project Structure / 项目结构](#project-structure--项目结构)
-- [Example Interaction / 示例对话](#example-interaction--示例对话)
-- [Development Notes / 开发说明](#development-notes--开发说明)
-- [License / 许可证](#license--许可证)
+- [Backend Internals / 后端内部实现](#-backend-internals--后端内部实现)
+- [Hybrid Retriever / 混合检索器](#-hybrid-retriever--混合检索器)
+- [Environment Variables / 环境变量](#-environment-variables--环境变量)
+- [Frontend / 前端交互逻辑](#-frontend--前端交互逻辑)
+- [Project Structure / 项目结构](#-project-structure--项目结构)
+- [Example Interaction / 示例对话](#-example-interaction--示例对话)
+- [Development Notes / 开发说明](#-development-notes--开发说明)
+- [License / 许可证](#-license--许可证)
 
 ---
 
