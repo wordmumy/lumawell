@@ -227,3 +227,66 @@ lumawell/
 
 ✨ *Developed with ❤️ using LangGraph + FastAPI + React.*  
 ✨ *由 LangGraph + FastAPI + React 驱动的智能健康助手。*
+
+---
+
+## 🔩 Backend Internals / 后端内部实现
+
+### 1) Router & Intents / 智能路由与子意图
+- 路由节点 `router_node` 负责识别：**问候、紧急/工具类（BMI/TDEE/Skin）、领域意图（fitness / nutrition / environment / mind / medical）、RAG 兜底**。
+- `environment` 领域进一步细分：`today`（实时）、`forecast_1/3/7/14`（未来 1/3/7/14 天）、`compare`（多城市对比）、`time_only`（仅问时间）。
+- 关键能力：
+  - **多城市识别**（如“悉尼和墨尔本对比天气”会抓取两个城市并去重）。
+  - **时间窗口 NLP+LLM 双层解析**：先规则解析（今天/明天/这周/两周/数字+天），解析不确定再调用小模型语义判断，返回 0/1/2/3/7/14 天；支持“**下周**”→ 自动偏移到下周一起始。 
+  - **应对空输入/问候**：空输入走 `idle`；问候走 `greet`，生成自我介绍与示例。
+
+### 2) Tools Node / 工具节点（BMI / TDEE / Skin）
+- 统一的 `tool_node`：先**解析参数**，不足则在 `need_clarify` 给出**缺失项与示例**；参数齐备→ 调用工具函数并**结构化输出**到 `tool_outputs`。
+- BMI：自动从文本与画像抽取 `height_cm`/`weight_kg`，返回 BMI 与分类；若用户表达需要“建议”，追加**健康体重区间**与训练/饮食建议（失败时提供兜底模板）。
+- TDEE：解析 `sex/age/height/weight/activity_level`（含中英文/缩写容错），输出 BMR/TDEE，并根据需求生成**可执行训练方案**（fallback 模板内置）。
+- Skin：从文本/画像识别 `skin_type`、常见活性成分（A醇/VC/果酸/水杨酸…）与诉求，产出**澳洲环境下**的早晚护肤建议与配伍提醒。
+
+### 3) RAG Context / 检索与上下文拼装
+- `rag_gather()` 使用 **ChunkedSemanticRetriever** 检索前 5 段，并以 `[cid] 摘要` 形式拼入上下文；同时把**工具输出**序列化并追加到上下文，供 LLM 参考。
+- `_safe_llm_answer()` 对 LLM 超时/异常提供**稳定兜底**，避免空回复；所有回答支持**Sources** 列表。
+
+### 4) Mind & Fitness Agents / 心理与运动节点
+- `fitness_agent_node`：根据情绪（anxious/low/excited/neutral）→ `mood_to_workout_tool` 生成结构化方案，再由 LLM 产出自然语言建议，内置**四类兜底模板**。
+- `mind_agent_node`：强调**情绪安抚**（不给训练建议），给出呼吸与锚定脚本、3 个当下可做的小步骤、风险信号与求助热线；同样走 `_safe_llm_answer`。
+
+### 5) Safety & Greeting / 安全与问候
+- 命中急症关键词（胸痛/昏厥/大出血/处方/诊断…）→ `safety` 路由，进行**拒答+分诊**。
+- `greet_node` 通过 LLM 生成更自然的欢迎语与能力示例。
+
+---
+
+## 🧠 Hybrid Retriever / 混合检索器
+
+**ChunkedSemanticRetriever**（`graph/retriever.py`）：
+- **Chunking**：段落感知 + 尾首重叠（size=900、overlap=120），保证中文连续性。
+- **Embedding**：`SentenceTransformer` 单例加载，输入前缀 `query:/passage:`，归一化相似度。
+- **TF‑IDF（char n‑gram 2–4）**：适配中英混排、专有名词与课程/成分词；Min‑Max 归一化。
+- **Hybrid 融合**：`score = w_e*embed + w_t*tfidf`，默认 `0.7/0.3`；
+- **主题门控**：按查询推断主题（skincare/exercise/diet/sleep/psychology），**匹配+1.3**、**不匹配×0.6**，减少跑题；
+- **阈值与排序**：默认 `MIN_SCORE=0.15`；命中过滤再 Top‑k，否则退化为全局 Top‑k；
+- **缓存**：`.kb_semantic_cache.pkl` 指纹随 `KB/*.md` 与 `CODE_REV` 变化而刷新。
+
+> 环境变量可覆盖：`EMBEDDING_MODEL`、`MIN_SCORE`、`HYBRID_EMBED_WEIGHT`、`HYBRID_TFIDF_WEIGHT`、`tfidf_max_df`、`tfidf_ngram`。
+
+---
+
+## 🧾 Environment Variables（补充） / 环境变量（补充）
+
+| Key | Description / 说明 |
+|-----|---------------------|
+| `OPENAI_API_KEY` | LLM provider key（如使用 OpenAI 直连） |
+| `DASHSCOPE_API_KEY` | 若走阿里通义兼容端点，用于 Chat/LLM 小模型与时间解析 |
+| `BASE_URL` | 兼容模式 API Base（默认 `https://dashscope-intl.aliyuncs.com/compatible-mode/v1`） |
+| `MODEL_NAME` | 主聊天模型名（默认 `qwen-plus`） |
+| `EMBEDDING_MODEL` | 检索器嵌入模型（默认 `BAAI/bge-m3`） |
+| `MIN_SCORE` | Hybrid 检索最小召回阈值（默认 `0.15`） |
+| `HYBRID_EMBED_WEIGHT` | 融合时 Embedding 权重（默认 `0.7`） |
+| `HYBRID_TFIDF_WEIGHT` | 融合时 TF‑IDF 权重（默认 `0.3`） |
+
+> 画像与持久化：`memory/profile.json`（`ProfileStore`）；检索缓存：`.kb_semantic_cache.pkl`；知识库目录：`kb/*.md`。
+
