@@ -275,7 +275,7 @@ lumawell/
 
 ---
 
-## 🧾 Environment Variables（补充） / 环境变量（补充）
+## 🧾 Environment Variables / 环境变量
 
 | Key | Description / 说明 |
 |-----|---------------------|
